@@ -1,6 +1,7 @@
 package jlox;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -179,7 +180,7 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
   }
 
   private void beginScope() {
-    scopes.push(new HashMap<String, Boolean>());
+    scopes.push(new LinkedHashMap<String, Boolean>());
   }
 
   private void endScope() {
@@ -204,9 +205,14 @@ class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
   private void resolveLocal(Expr expr, Token name) {
     for (int i = scopes.size() - 1; i >= 0; i--) {
-      if (scopes.get(i).containsKey(name.lexeme)) {
-        interpreter.resolve(expr, scopes.size() - 1 - i);
-        return;
+      Map<String, Boolean> scope = scopes.get(i);
+      int slot = 0;
+      for (String localName : scope.keySet()) {
+        if (localName.equals(name.lexeme)) {
+          interpreter.resolve(expr, scopes.size() - 1 - i, slot);
+          return;
+        }
+        slot++;
       }
     }
   }

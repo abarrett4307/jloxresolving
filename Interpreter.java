@@ -10,7 +10,17 @@ class Interpreter implements Expr.Visitor<Object>,
  
   final Environment globals = new Environment();
   private Environment environment = globals;
-  private final Map<Expr, Integer> locals = new HashMap<>();
+  private final Map<Expr, Local> locals = new HashMap<>();
+
+  private static class Local {
+    final int depth;
+    final int slot;
+
+    Local(int depth, int slot) {
+      this.depth = depth;
+      this.slot = slot;
+    }
+  }
 
 
   Interpreter() {
@@ -30,15 +40,6 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
 
-  /* void interpret(Expr expression) { 
-    try {
-      Object value = evaluate(expression);
-      System.out.println(stringify(value));
-    } catch (RuntimeError error) {
-      Lox.runtimeError(error);
-    }
-  }
-*/
     void interpret(List<Stmt> statements) {
     try {
       for (Stmt statement : statements) {
@@ -77,9 +78,9 @@ class Interpreter implements Expr.Visitor<Object>,
   }
 
   private Object lookUpVariable(Token name, Expr expr) {
-    Integer distance = locals.get(expr);
-    if (distance != null) {
-      return environment.getAt(distance, name.lexeme);
+    Local local = locals.get(expr);
+    if (local != null) {
+      return environment.getAt(local.depth, local.slot);
     } else {
       return globals.get(name);
     }
@@ -216,8 +217,8 @@ class Interpreter implements Expr.Visitor<Object>,
     stmt.accept(this);
   }
 
-  void resolve(Expr expr, int depth) {
-    locals.put(expr, depth);
+  void resolve(Expr expr, int depth, int slot) {
+    locals.put(expr, new Local(depth, slot));
   }
 
   void executeBlock(List<Stmt> statements,
@@ -303,9 +304,9 @@ class Interpreter implements Expr.Visitor<Object>,
   public Object visitAssignExpr(Expr.Assign expr) {
     Object value = evaluate(expr.value);
 
-    Integer distance = locals.get(expr);
-    if (distance != null) {
-      environment.assignAt(distance, expr.name, value);
+    Local local = locals.get(expr);
+    if (local != null) {
+      environment.assignAt(local.depth, local.slot, value);
     } else {
       globals.assign(expr.name, value);
     }
